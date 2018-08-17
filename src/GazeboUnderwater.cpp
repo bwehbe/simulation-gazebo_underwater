@@ -97,6 +97,9 @@ namespace gazebo_underwater
     {
         waterLevel = getParameter<double>("water_level","meters", 0.0);
         fluidVelocity = getParameter<Vector3d>("fluid_velocity","m/s",Vector3d(0,0,0));
+        fluidCharacteristic = getParameter<unsigned int>("fluid_characteristic", ". option", 0);
+        fluidSurfaceVelocity = getParameter<Vector3d>("fluid_surface_velocity", "m/s", Vector3d(0,0,0));
+        fluidVelocityDepth = getParameter<double>("fluid_velocity_depth", "m", 0.0);
         modelInertial = computeModelInertial(model);
 
         // buoyancy must be the difference between the buoyancy when the model is completely submersed and the model weight
@@ -166,6 +169,10 @@ namespace gazebo_underwater
         applyDamp();
         applyCoriolisAddedInertia();
         compensateGzEffort();
+        if (fluidCharacteristic > 0)
+        {
+          fluidVelocity = localFluidVelocity();
+        }
     }
 
     void GazeboUnderwater::applyDamp()
@@ -361,7 +368,7 @@ namespace gazebo_underwater
     {
         Vector6 velocities;
         // Calculates the difference between the model and fluid velocity relative to the world frame
-	Vector3d CoG = GzGetIgn(modelInertial, CoG, ());
+        Vector3d CoG = GzGetIgn(modelInertial, CoG, ());
         Vector3d velocityDifference = GzGetIgn((*link), WorldLinearVel, (CoG)) - fluidVelocity;
         velocities.top = GzGetIgn((*link), WorldPose, ()).Rot().RotateVectorReverse( velocityDifference );
         velocities.bottom = GzGetIgn((*link), RelativeAngularVel, ());
@@ -386,5 +393,24 @@ namespace gazebo_underwater
         compensatedMassPublisher = node->Advertise<CompMassMSG>("~/" + topicName);
         gzmsg <<"GazeboUnderwater: create gazebo topic /gazebo/"+ GzGet((*model->GetWorld()), Name, ())
             + "/" + topicName << endl;
+    }
+
+    Vector3d GazeboUnderwater::localFluidVelocity()
+    {
+      Vector3d localFluidVelocity;
+
+      double distanceToSurface = waterLevel - GzGetIgn((*link), WorldPose, ()).Pos().Z();
+
+      if (distanceToSurface < fluidVelocityDepth && fluidVelocityDepth > 0)
+      {
+        double ratio = distanceToSurface/fluidVelocityDepth;
+        localFluidVelocity = (1-ratio)*fluidSurfaceVelocity + ratio*fluidVelocity;
+      } else {
+        localFluidVelocity = fluidVelocity;
+      }
+
+      //localFluidVelocity = fluidVelocity*(1 - (1 - (distanceToGround/2))**2)
+
+      return localFluidVelocity;
     }
 }
