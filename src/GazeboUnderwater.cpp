@@ -97,8 +97,8 @@ namespace gazebo_underwater
     {
         waterLevel = getParameter<double>("water_level","meters", 0.0);
         fluidVelocity = getParameter<Vector3d>("fluid_velocity","m/s",Vector3d(0,0,0));
-        fluidCharacteristic = getParameter<unsigned int>("fluid_characteristic", ". option", 0);
-        fluidSurfaceVelocity = getParameter<Vector3d>("fluid_surface_velocity", "m/s", Vector3d(0,0,0));
+        localFluidVelocity = fluidVelocity;
+        surfaceFluidVelocity = getParameter<Vector3d>("surface_fluid_velocity", "m/s", Vector3d(0,0,0));
         fluidVelocityDepth = getParameter<double>("fluid_velocity_depth", "m", 0.0);
         modelInertial = computeModelInertial(model);
 
@@ -169,9 +169,9 @@ namespace gazebo_underwater
         applyDamp();
         applyCoriolisAddedInertia();
         compensateGzEffort();
-        if (fluidCharacteristic > 0)
+        if (surfaceFluidVelocity != fluidVelocity)
         {
-          fluidVelocity = localFluidVelocity();
+          localFluidVelocityUpdate();
         }
     }
 
@@ -369,7 +369,7 @@ namespace gazebo_underwater
         Vector6 velocities;
         // Calculates the difference between the model and fluid velocity relative to the world frame
         Vector3d CoG = GzGetIgn(modelInertial, CoG, ());
-        Vector3d velocityDifference = GzGetIgn((*link), WorldLinearVel, (CoG)) - fluidVelocity;
+        Vector3d velocityDifference = GzGetIgn((*link), WorldLinearVel, (CoG)) - localFluidVelocity;
         velocities.top = GzGetIgn((*link), WorldPose, ()).Rot().RotateVectorReverse( velocityDifference );
         velocities.bottom = GzGetIgn((*link), RelativeAngularVel, ());
         return velocities;
@@ -395,22 +395,18 @@ namespace gazebo_underwater
             + "/" + topicName << endl;
     }
 
-    Vector3d GazeboUnderwater::localFluidVelocity()
+    void GazeboUnderwater::localFluidVelocityUpdate(void)
     {
-      Vector3d localFluidVelocity;
-
-      double distanceToSurface = waterLevel - GzGetIgn((*link), WorldPose, ()).Pos().Z();
-
-      if (distanceToSurface < fluidVelocityDepth && fluidVelocityDepth > 0)
+      if (fluidVelocityDepth > 0)
       {
-        double ratio = distanceToSurface/fluidVelocityDepth;
-        localFluidVelocity = (1-ratio)*fluidSurfaceVelocity + ratio*fluidVelocity;
-      } else {
-        localFluidVelocity = fluidVelocity;
+        double distanceToSurface = waterLevel - GzGetIgn((*link), WorldPose, ()).Pos().Z();
+        if (distanceToSurface < fluidVelocityDepth)
+        {
+          double ratio = distanceToSurface/fluidVelocityDepth;
+          localFluidVelocity = (1-ratio)*surfaceFluidVelocity + ratio*fluidVelocity;
+          std::cout << "localFluidVelocity: " << localFluidVelocity << '\n';
+        }
       }
-
       //localFluidVelocity = fluidVelocity*(1 - (1 - (distanceToGround/2))**2)
-
-      return localFluidVelocity;
     }
 }

@@ -38,7 +38,7 @@ namespace gazebo_underwater
             std::vector<Matrix6> convertToMatrices(const std::string &matrices);
             Matrix6 convertToMatrix(const std::string &matrix);
 
-            ignition::math::Vector3d localFluidVelocity();
+            void localFluidVelocityUpdate();
 
             ModelPtr model;
             WorldPtr world;
@@ -68,8 +68,8 @@ namespace gazebo_underwater
 
             ignition::math::Vector3d centerOfBuoyancy;
             ignition::math::Vector3d fluidVelocity;
-            unsigned int fluidCharacteristic;
-            ignition::math::Vector3d fluidSurfaceVelocity;
+            ignition::math::Vector3d localFluidVelocity;
+            ignition::math::Vector3d surfaceFluidVelocity;
             double fluidVelocityDepth;
 
             double waterLevel;       // dimension in meter
