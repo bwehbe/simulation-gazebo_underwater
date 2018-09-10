@@ -404,7 +404,6 @@ namespace gazebo_underwater
         {
           double ratio = distanceToSurface/fluidVelocityDepth;
           localFluidVelocity = (1-ratio)*surfaceFluidVelocity + ratio*fluidVelocity;
-          std::cout << "localFluidVelocity: " << localFluidVelocity << '\n';
         }
       }
       //localFluidVelocity = fluidVelocity*(1 - (1 - (distanceToGround/2))**2)
